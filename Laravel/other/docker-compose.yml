@@ -1,0 +1,255 @@
+version: "1"
+services:
+  web:
+    image: nginx:1.12.1
+    container_name: web_nginx
+    ports:
+      - 80:80
+      - 443:443
+      - 8002:8802
+    depends_on:
+      - php
+      - php1
+      - php2
+      - php3
+      - php4
+      - php5
+    # 同 php 一起共享 ./apps 目录
+    # volumes_from:
+    #   - php
+    # 创建一个数据卷，由 ./images/nginx/config => /etc/nginx/conf.d
+    volumes:
+      - ./apps:/apps
+      - ./images/nginx/nginx.conf:/etc/nginx/nginx.conf
+      - ./images/nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./logs/nginx:/var/log/nginx
+    privileged: true
+    restart: always
+
+  # PHP 7.1-fpm: https://hub.docker.com/_/php/
+  php:
+    # image: php:7.1-fpm
+    image: index.docker.io/hsl888/php:latest
+    # build:
+    #   context: ./images/php
+    #   dockerfile: Dockerfile
+    container_name: php
+    volumes:
+      - ./apps:/apps
+      - ./images/php/config/php.ini:/usr/local/etc/php/php.ini
+      - ./images/php/config/www.conf:/usr/local/etc/php-fpm.d/www.conf
+    privileged: true
+    links:
+      - db_newsapp_site
+    restart: always
+  php1:
+    # image: php:7.1-fpm
+    image: index.docker.io/hsl888/php:latest
+    container_name: php_1
+    volumes:
+      - ./apps:/apps
+      - ./images/php/config/php.ini:/usr/local/etc/php/php.ini
+      - ./images/php/config/www.conf:/usr/local/etc/php-fpm.d/www.conf
+    privileged: true
+    links:
+      - db_newsapp_site
+    restart: always
+  php2:
+    # image: php:7.1-fpm
+    image: index.docker.io/hsl888/php:latest
+    container_name: php_2
+    volumes:
+      - ./apps:/apps
+      - ./images/php/config/php.ini:/usr/local/etc/php/php.ini
+      - ./images/php/config/www.conf:/usr/local/etc/php-fpm.d/www.conf
+    privileged: true
+    links:
+      - db_newsapp_site
+    restart: always
+  php3:
+    # image: php:7.1-fpm
+    image: index.docker.io/hsl888/php:latest
+    container_name: php_3
+    volumes:
+      - ./apps:/apps
+      - ./images/php/config/php.ini:/usr/local/etc/php/php.ini
+      - ./images/php/config/www.conf:/usr/local/etc/php-fpm.d/www.conf
+    privileged: true
+    links:
+      - db_newsapp_site
+    restart: always
+  php4:
+    # image: php:7.1-fpm
+    image: index.docker.io/hsl888/php:latest
+    container_name: php_4
+    volumes:
+      - ./apps:/apps
+      - ./images/php/config/php.ini:/usr/local/etc/php/php.ini
+      - ./images/php/config/www.conf:/usr/local/etc/php-fpm.d/www.conf
+    privileged: true
+    links:
+      - db_newsapp_site
+    restart: always
+
+  # push wechat table: php5 process
+  php5:
+    # image: php:7.1-fpm
+    image: index.docker.io/hsl888/php:latest
+    container_name: php_5
+    volumes:
+      - ./apps:/apps
+      - ./images/php/config/php.ini:/usr/local/etc/php/php.ini
+      - ./images/php/config/www.conf:/usr/local/etc/php-fpm.d/www.conf
+    privileged: true
+    links:
+      - db_newsapp_site
+    restart: always
+
+  # # 用于 Git，Composer, php sitemap 等工具
+  # console:
+  #   build:
+  #     context: ./images/console
+  #     dockerfile: Dockerfile
+  #   volumes_from:
+  #     - php
+  #   tty: true
+
+  # MySQL 5.7  https://hub.docker.com/_/mysql/
+  # ------------ newsapp_site master---------------
+  db_newsapp_site:
+    # image: mysql:5.7
+    build:
+      context: ./images/mysql
+      dockerfile: Dockerfile
+    container_name: db_newsapp_site
+    # 设置 3306 端口映射以便远程连接
+    ports:
+      - 3307:3306
+    # 配置一些环境变量，具体的环境变量细节可以访问上面的网址查看
+    environment:
+      # TZ: "Asia/Taipei"
+      MYSQL_ROOT_PASSWORD: "buzz#1982T"
+      MYSQL_DATABASE: "newsapp_site"
+      MYSQL_USER: "newsapp_site"
+      MYSQL_PASSWORD: "newsapp#20170815"
+    # command: bash -c "echo \"GRANT ALL PRIVILEGES ON *.* TO root@'%' IDENTIFIED BY 'hslhe' WITH GRANT OPTION; FLUSH PRIVILEGES;\" | mysql -uroot -phslhe"
+    # command: mysqld --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    restart: always
+    volumes:
+      - ./databases/db_newsapp_site:/var/lib/mysql
+      - ./logs/mysql:/var/log/mysql
+      - ./images/mysql/mysql.conf.d/mysqld-master.cnf:/etc/mysql/mysql.conf.d/mysqld.cnf
+    privileged: true
+    networks:
+      vpcbr:
+        ipv4_address: 10.0.0.2
+    mem_limit: 8000m
+  # ------------ db_newsapp_site_web slave---------------
+  db_newsapp_site_web:
+    # image: mysql:5.7
+    build:
+      context: ./images/mysql
+      dockerfile: Dockerfile
+    container_name: db_newsapp_site_web
+    ports:
+      - 3317:3306
+    depends_on:
+      - db_newsapp_site
+    environment:
+      # TZ: "Asia/Taipei"
+      MYSQL_ROOT_PASSWORD: "buzz#1982T"
+      MYSQL_DATABASE: "newsapp_site"
+      MYSQL_USER: "newsapp_site"
+      MYSQL_PASSWORD: "newsapp#20170815"
+    restart: always
+    volumes:
+      - ./databases/db_newsapp_site_web:/var/lib/mysql
+      - ./logs/mysql:/var/log/mysql
+      - ./images/mysql/mysql.conf.d/mysqld-slave.cnf:/etc/mysql/mysql.conf.d/mysqld.cnf
+    privileged: true
+    networks:
+      vpcbr:
+        ipv4_address: 10.0.0.12
+    mem_limit: 8000m
+
+  # ------------ db_wechat_public --------------
+  db_wechat_public:
+    build:
+      context: ./images/mysql
+      dockerfile: Dockerfile
+    container_name: db_wechat_public
+    ports:
+      - 3306:3306
+    environment:
+      MYSQL_ROOT_PASSWORD: "moma1601cool"
+      MYSQL_DATABASE: "wechat_public"
+      MYSQL_USER: "wechat"
+      MYSQL_PASSWORD: "wechat#20170831"
+    restart: always
+    volumes:
+      - ./databases/db_wechat_public:/var/lib/mysql
+      - ./images/mysql/mysql.conf.d/mysqld.cnf:/etc/mysql/mysql.conf.d/mysqld.cnf
+    networks:
+      vpcbr:
+        ipv4_address: 10.0.0.3
+    mem_limit: 8000m
+
+  # python scrapy (yidianzixun, baijiahao, wechat)--------------------------
+  scrapy_crawl:
+    image: index.docker.io/hsl888/scrapy:latest
+    # build:
+    #   context: ./images/scrapy
+    #   dockerfile: Dockerfile
+    container_name: scrapy_crawl
+    volumes:
+      - ./apps:/apps
+      - /disk1:/disk1
+      - ./logs/scrapy:/logs/scrapy
+      # - ./images/scrapy/crontab:/root/scrapy
+      - ./images/scrapy/ShellScript:/ShellScript
+      - ./images/scrapy/ssmtp.conf:/etc/ssmtp/ssmtp.conf
+    depends_on:
+      - db_newsapp_site
+      - db_wechat_public
+    # command: cron -f
+    # command: bash -c "cp /root/scrapy /etc/cron.d/scrapy && chown root:root /etc/cron.d/scrapy && /usr/sbin/cron -f"
+    privileged: true
+    restart: always
+    networks:
+      vpcbr:
+        ipv4_address: 10.0.0.4
+    mem_limit: 9000m
+    tty: true
+
+  # crontabs --------------------------------------
+  alpine_cron:
+    image: index.docker.io/hsl888/alpine-cron:latest
+    # build:
+    #   context: ./images/alpine-cron
+    #   dockerfile: Dockerfile
+    container_name: alpine_cron
+    volumes:
+      - ./images/alpine-cron/crontabs:/crontabs
+      - ./logs/cron:/logs/cron
+      # - /etc/localtime:/etc/localtime:ro
+      - /usr/share/zoneinfo:/usr/share/zoneinfo
+      # docker.sock
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    privileged: true
+    environment:
+      TZ: "Asia/Shanghai"
+    command: >
+      sh -c "
+        echo /usr/share/zoneinfo/$TZ > /etc/localtime &&
+        /usr/bin/crontab /crontabs &&
+        /usr/sbin/crond -f -L 8 "
+    restart: always
+
+
+networks:
+  vpcbr:
+    driver: bridge
+    ipam:
+     config:
+       - subnet: 10.0.0.0/16
+         gateway: 10.0.0.1
